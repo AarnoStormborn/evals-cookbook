@@ -1,7 +1,35 @@
 [project]
 name = "ec-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend for LLM Evals Cookbook - Playground inference and batch evaluations"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "redis",
+    "celery",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]",
+    "aiosqlite",
+    "psycopg2-binary",
+    "flower",
+    "loguru",
+    "alembic",
+    "groq",
+    "tiktoken",
+    "numpy",
+    "nltk",
+    "textstat",
+    "tenacity",
+    "sse-starlette",
+    "httpx",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+]

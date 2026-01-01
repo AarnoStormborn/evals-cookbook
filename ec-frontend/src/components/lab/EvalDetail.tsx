@@ -1,52 +1,105 @@
-import { X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X, Loader2 } from "lucide-react"
+import { getEvalReport, type EvalReport, type EvalRun } from "@/lib/api"
 
-export function EvalDetail({ run, onClose }: { run: any, onClose: () => void }) {
+export function EvalDetail({ run, onClose }: { run: EvalRun, onClose: () => void }) {
+    const [report, setReport] = useState<EvalReport | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const loadReport = async () => {
+            setLoading(true)
+            const data = await getEvalReport(run.id)
+            setReport(data)
+            setLoading(false)
+        }
+        loadReport()
+    }, [run.id])
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-zinc-950 border border-zinc-800 w-[800px] max-h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-card border border-border w-[900px] max-h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900">
+                <div className="panel-header">
                     <div>
-                        <h2 className="text-lg font-semibold text-zinc-100">Run Details: <span className="font-mono text-zinc-400">{run.id}</span></h2>
-                        <p className="text-xs text-zinc-500">Model: {run.model}</p>
+                        <h2 className="text-lg font-semibold text-foreground">
+                            Run Details: <span className="font-mono text-muted-foreground">{run.id.slice(0, 8)}</span>
+                        </h2>
+                        <p className="text-xs text-muted-foreground">Model: {run.model}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-zinc-100 transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-auto p-6 space-y-6 bg-zinc-950">
-                    {/* Comparison */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Prompt</h3>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded p-4 text-sm font-mono whitespace-pre-wrap text-zinc-300">
-                                {run.prompt}
-                            </div>
+                <div className="flex-1 overflow-auto p-6 space-y-6 bg-card">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            Loading report...
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Output</h3>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded p-4 text-sm font-mono whitespace-pre-wrap text-zinc-300">
-                                [Mock Output] This is a simulated output for the evaluation run. In a real scenario, this would contain the actual model response.
+                    ) : report ? (
+                        <>
+                            {/* Summary Stats */}
+                            <div className="grid grid-cols-4 gap-4">
+                                <StatCard label="Total Items" value={report.total_items.toString()} />
+                                <StatCard label="Pass Rate" value={`${Math.round(report.pass_rate * 100)}%`} highlight={report.pass_rate >= 0.8} />
+                                <StatCard label="Avg Latency" value={`${Math.round(report.avg_latency_ms)}ms`} />
+                                <StatCard label="Status" value={report.status} />
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Judge Reasoning */}
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Judge Reasoning</h3>
-                        <div className="bg-zinc-900 border border-zinc-800 rounded p-4 text-sm text-zinc-300">
-                            The model successfully followed the instructions. The output is coherent and relevant to the prompt. No safety violations were detected.
+                            {/* Results */}
+                            {report.results && report.results.length > 0 && (
+                                <div className="space-y-3">
+                                    <h3 className="label-sm">Results ({report.results.length})</h3>
+                                    <div className="space-y-3 max-h-[400px] overflow-auto">
+                                        {report.results.map((result, idx) => (
+                                            <div key={idx} className="bg-secondary border border-border rounded-md p-4">
+                                                <div className="flex items-start justify-between gap-4 mb-3">
+                                                    <div className="flex-1">
+                                                        <p className="text-xs text-muted-foreground mb-1">Prompt</p>
+                                                        <p className="text-sm font-mono text-foreground">{result.input_prompt}</p>
+                                                    </div>
+                                                    <div className={`px-2 py-1 rounded text-xs font-medium ${result.passed ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                                        {result.passed ? "PASS" : "FAIL"}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground mb-1">Output</p>
+                                                    <p className="text-sm font-mono text-foreground/80 whitespace-pre-wrap">{result.output.slice(0, 500)}{result.output.length > 500 ? "..." : ""}</p>
+                                                </div>
+                                                {result.failure_reason && (
+                                                    <p className="text-xs text-red-400 mt-2">Reason: {result.failure_reason}</p>
+                                                )}
+                                                <p className="text-xs text-muted-foreground mt-2">Latency: {Math.round(result.latency_ms)}ms</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                            Report not available yet
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-zinc-800 bg-zinc-900 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-sm font-medium transition-colors border border-zinc-700">Close</button>
+                <div className="p-4 border-t border-border bg-secondary flex justify-end">
+                    <button onClick={onClose} className="btn-primary">Close</button>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function StatCard({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+    return (
+        <div className="bg-secondary border border-border rounded-md p-3">
+            <p className="label-sm mb-1">{label}</p>
+            <p className={`text-lg font-mono font-semibold ${highlight ? "text-emerald-400" : "text-foreground"}`}>{value}</p>
         </div>
     )
 }

@@ -24,27 +24,27 @@ function HeatmapToken({ token }: { token: any }) {
     // e.g. 0 to -0.1 (High), -0.1 to -1.0 (Medium), < -1.0 (Low)
 
     let bgClass = "bg-transparent"
-    let textClass = "text-zinc-300"
+    let textClass = "text-foreground"
 
     const logprob = token.logprob
 
     if (logprob > -0.1) {
-        // High confidence
-        textClass = "text-zinc-300"
+        // High confidence - default text color
+        textClass = "text-foreground"
     } else if (logprob > -0.5) {
-        // Medium confidence
-        bgClass = "bg-yellow-500/20"
-        textClass = "text-yellow-200"
+        // Medium confidence - amber tint
+        bgClass = "bg-amber-500/15"
+        textClass = "text-amber-200"
     } else {
-        // Low confidence
-        bgClass = "bg-red-500/30"
-        textClass = "text-red-200"
+        // Low confidence - red tint
+        bgClass = "bg-red-500/20"
+        textClass = "text-red-300"
     }
 
     return (
         <span
             className={cn(
-                "transition-colors duration-300",
+                "transition-colors duration-300 rounded-[1px]",
                 bgClass,
                 textClass
             )}
